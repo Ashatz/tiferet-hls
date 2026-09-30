@@ -147,6 +147,9 @@ activemq-data/
 # SageMath parsed files
 *.sage.py
 
+# RFP working drafts (public copy is the GitHub issue body)
+.rfp/
+
 # Environments
 .env
 .envrc
