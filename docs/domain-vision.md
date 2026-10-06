@@ -2,58 +2,54 @@
 
 **Status:** Draft · **Domain:** `hls` · **Code:** `tiferet_hls/` (intended; not seeded) · **Branch:** `docs-domain-vision`
 
-## The bet: declare the design, don't clone the script
+## The bet: a library of architectures, not a pile of copies
 
-A hardware design study compares one algorithm optimized several different ways. The usual way to run one version is to copy a directory: the algorithm's source, a build script, and a tool project, edited by hand for whatever optimization this version is testing. Five versions mean five copies. What makes version three different from version two is stated nowhere but the difference between two scripts, and how well it did is stated nowhere but whatever the tool left on disk, found by hand and transcribed into a spreadsheet. Move the copies into a shared folder and the build paths break.
+The usual way to compare hardware designs is to copy a folder: one kernel, one script, one tool project, edited by hand. What makes one version different is a script diff. How it did is whatever the tool left on disk. Move the copies and the paths break. That wrings rows out of one kernel. It does not manage a library under real conditions: the part, the clock, the operators, and a later run of the same design.
 
-tiferet-hls takes the opposite position. **The design is a declared record, and the folder the tool runs in is emitted from that record.** Saying which algorithm, which labeled places inside it, and which optimization applies to each one is cheaper than maintaining another copy of a script. Unlike a copy, the statement survives being moved, rerun, and compared.
+tiferet-hls takes the opposite position. **A study is a declared project:** a list of designs, each a code snippet plus the hardware structure mapped onto it. That structure is the adders, multipliers, multiplexers, and clocks, and the directives bound to labels the snippet already has. The folder the tool runs in is compiled from the project into one archive. Someone else runs the script in that archive. The reports come back as a second archive and attach to the design that produced them.
 
 ## What this domain makes real
 
-tiferet-hls is a catalog with one database behind it. It knows an algorithm as a record — its source files, the function that tops it, and the labeled places inside it an optimization can attach to. It knows a named combination of optimizations on those places, the isolated files that let that combination run without destroying another one, and the measurements that came back after someone ran it.
+tiferet-hls is the record and the round trip. It holds snippets, designs, and projects. A structure can be drawn for one design or taken from a template. A snippet can be copied, or promoted to a template, without rewriting the design it came from. The export holds a generated snippet per design, the tool scripts, and a shell script that runs synthesis and packs the reports and the log. A design can be recorded before it has been run. A second run adds a measurement. It does not become a different design.
 
-A combination can be recorded before it has ever been run. A measurement attaches to it afterward. Running it a second time adds a second measurement; it does not make it a different design.
+An author may start from a snippet alone. Compiling it into ElohaSL, the declared form owned by tiferet-elsl, may propose a baseline structure. That proposal is not the design until it passes the same check as one drawn by hand.
 
 ## What we get for it
 
-### A comparison you don't assemble by hand
+### A library instead of a case statement
 
-The costly part of a five-design study is not the synthesis. It is knowing which result belongs to which optimization, once the results are scattered across folders under names only their author can decode. The catalog already knows: the combination was named before the run, and the measurement attached to that name.
+Knowing which result belongs to which architecture, once the folders multiply and the same design is run again under a different part or clock, is the costly part. The project already knows: the design was named, and the measurement attached to that name. A further design is a declaration, not another copy.
+
+### Code and architecture that are not allowed to drift
+
+The snippet and the hardware structure are different records. A design that maps an operator, a clock, or a directive onto a label the snippet does not have is refused before export. It should fail here, not on a server, and not by renaming a label so that it appears to run.
+
+### One archive out, one archive back
+
+The export is the whole project. Paths are part of it, so moving it does not break the build. The return archive is all the application needs in order to read the run. The application does not call the synthesis tool. The script does, on a machine this record does not own.
 
 ### Numbers that keep their provenance
 
-Latency, resource counts, and the achieved interval — how often a pipelined loop can actually accept new data, a number that often appears only in the run log and not in the summary report — are copied out of the run and attached to the combination they came from. Throughput and area are computed from those and marked as computed. If the author states the formula, the record carries the author's formula; the library does not invent one, and never stores a derived figure as though the tool had reported it.
-
-### Runs that don't destroy each other
-
-The tool's own project-open step erases the project it opens, so two designs cannot share one. Isolation is therefore part of the record's job: one folder, one script, one project per combination, with source paths that still resolve after the folder is moved.
-
-### The record outlives the way it is written down
-
-The same optimization is written as a tool script in one setting and as a source annotation in another. Which form gets emitted is a detail of the run, not of the design — the record states the optimization, and the emitted form renders it. The first cut may emit only one form.
-
-### Change that stays on the record
-
-A sixth design is a declaration, not a sixth copy. A combination that names a place its algorithm does not declare is caught as wrong, rather than quietly becoming a design that will not build.
+Latency, resource counts, and the achieved interval — how often a pipelined loop can accept new data, often visible only in the run log — attach to the design they came from. Throughput and area are computed from those and marked as computed. A formula is recorded only if the author states it. A figure, or a table of the same numbers, is made from that record. It is not a second one.
 
 ## The core of the work
 
-Everything this domain does follows one path:
+> **Record** the snippet and its labels → **bind** a hardware structure and its directives to those labels → **check** that the two agree → **export** an archive a script can run → **read** the archive that script returns.
 
-> **Declare** the algorithm and the labeled places inside it → **combine** optimizations on those places under a name → **emit** files that run in isolation → **attach** the measurements that come back.
+What varies is the snippet, the labels the author names on it, the structure mapped onto those labels, the setup of the run (part and clock, not an optimization), and how many times a design has been measured: none, once, or again later.
 
-Four things vary. The algorithm. Its labeled places, which differ from algorithm to algorithm — a loop is one kind, an array is another. The kind of optimization, which do not share a parameter list: pipelining takes a requested interval, unrolling takes a factor, splitting an array takes a type, a factor, and a dimension. And how many times a combination has been measured — none, once, or again later.
-
-The design commitment is: **the declared combination is the fixed point; the emitted form, the tool that runs it, and the measurements are the variable ends.** The tutorial matrix–vector kernel that motivated this work is the first fixture, not the domain.
-
-The labeled places are named by the author, from labels the source already carries. Reading the source to discover them is the wrong bet: an optimization attached to a renamed label is a different design, and will not run.
+The commitment is: **the design is the fixed point; the emitted files, the tool that runs them, and the measurements are the variable ends.** The tutorial matrix–vector kernel is the first fixture, not the product.
 
 ## What it deliberately does not do
 
-It does not synthesize; Vitis HLS does, and remains the tool. It does not invoke Vitis either — no runner in this cut, and the compute server, tool version, and license sit outside the record. It does not decide which design won; the author judges. It does not draw the figure; tiferet-plot owns the picture. It does not read the algorithm's source to find labels. It does not run general applications or wire their parts together — that is the Tiferet framework.
+It does not synthesize. The script does. The server, the tool version, and the license stay outside the record. It does not pick a winner. It does not draw the figure; tiferet-plot owns the picture.
 
-A runner, further optimization kinds, and a second emitted form are later work, named here so they are not quietly assumed.
+It does not own the hardware vocabulary. Adders, multipliers, multiplexers, clocks, and their templates belong to tiferet-fpga. This domain holds the mapping onto a design's labels. It does not own ElohaSL. tiferet-elsl compiles a snippet into that form. Turning that form back into C synthesis code lives here, because no other tool needs it. Choosing a structure from runtime state is tiferet-mlir, and it is later.
+
+It does not invent labels by reading C and renaming them. A proposed baseline that does not match is a finding, not a fix. A click-built canvas is not this cut, and tiferet-elements is not that canvas. A management screen is later work.
 
 ---
 
-*Companion document:* `docs/core-domain-distillation.md` — the detailed walkthrough of the domain's vocabulary, behaviors, and the relationships between its parts.
+*Companion document:* `docs/core-domain-distillation.md` — the detailed
+walkthrough of the domain's vocabulary, behaviors, and the relationships
+between its parts.
